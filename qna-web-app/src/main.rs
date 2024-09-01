@@ -5,6 +5,7 @@ use warp::{http::Method, Filter};
 mod routes;
 mod store;
 mod types;
+mod error;
 
 #[tokio::main]
 async fn main() {
@@ -45,12 +46,20 @@ async fn main() {
         .and(warp::body::json())
         .and_then(routes::question::add_question);
 
+    let add_answer = warp::post()
+        .and(warp::path("comments"))
+        .and(warp::path::end())
+        .and(store_filter.clone())
+        .and(warp::body::form())
+        .and_then(routes::answer::add_answer);
+
     let routes = get_questions
         .or(update_question)
         .or(add_question)
+        .or(add_answer)
         .or(delete_question)
         .with(cors)
-        .recover(return_error);
+        .recover(error::return_error);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }
