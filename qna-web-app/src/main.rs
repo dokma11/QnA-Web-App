@@ -1,11 +1,10 @@
 #![warn(clippy::all)]
 
+use handle_errors::return_error;
 use warp::{http::Method, Filter};
-
 mod routes;
 mod store;
 mod types;
-mod error;
 
 #[tokio::main]
 async fn main() {
@@ -59,7 +58,7 @@ async fn main() {
         .or(add_answer)
         .or(delete_question)
         .with(cors)
-        .recover(error::return_error);
+        .recover(return_error);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }
