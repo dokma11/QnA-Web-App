@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use handle_errors::Error;
-use warp::{http::StatusCode, path::param};
+use warp::{http::StatusCode};
 use tracing::{instrument, info, event, Level};
 
 use crate::store::Store;
 use crate::types::pagination::{extract_pagination, Pagination};
-use crate::types::question::{Question, QuestionId, NewQuestion};
+use crate::types::question::{Question, NewQuestion};
 
 #[instrument]
 pub async fn get_questions(

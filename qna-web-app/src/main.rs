@@ -3,6 +3,8 @@
 use handle_errors::return_error;
 use warp::{http::Method, Filter};
 use tracing_subscriber::fmt::format::FmtSpan;
+use dotenv;
+use std::env;
 
 mod routes;
 mod store;
@@ -17,7 +19,16 @@ async fn main() {
         .with_span_events(FmtSpan::CLOSE)
         .init();
 
-    let store = store::Store::new("postgres://localhost:5432/rust-web-dev").await;
+    dotenv::from_filename("DATABASE.env").ok();
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+    let store = store::Store::new(&database_url).await;
+
+    sqlx::migrate!()
+        .run(&store.clone().connection)
+        .await
+        .expect("Cannot run migrations!");
+
     let store_filter = warp::any().map(move || store.clone());
 
     let cors = warp::cors()
