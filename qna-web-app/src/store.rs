@@ -1,7 +1,9 @@
 use sqlx::{Row};
 use sqlx::postgres::{PgPoolOptions, PgRow, PgPool};
+use tracing_subscriber::filter::FilterExt;
 use crate::types::question::{NewQuestion, Question, QuestionId};
 use crate::types::answer::{NewAnswer, Answer, AnswerId};
+use crate::types::account::{NewAccount, Account, AccountId};
 use handle_errors::Error;
 
 #[derive(Debug, Clone)]
@@ -42,7 +44,7 @@ impl Store {
                 Ok(questions) => Ok(questions),
                 Err(e) => {
                     tracing::event!(tracing::Level::ERROR, "{:?}", e);
-                    Err(Error::DatabaseQueryError)
+                    Err(Error::DatabaseQueryError(e))
                 }
         }
     }
@@ -66,7 +68,7 @@ impl Store {
             .fetch_one(&self.connection)
             .await {
             Ok(question) => Ok(question),
-            Err(_) => Err(Error::DatabaseQueryError),
+            Err(e) => Err(Error::DatabaseQueryError(e)),
         }
     }
 
@@ -92,7 +94,7 @@ impl Store {
             .fetch_one(&self.connection)
             .await {
             Ok(question) => Ok(question),
-            Err(_) => Err(Error::DatabaseQueryError)
+            Err(e) => Err(Error::DatabaseQueryError(e)),
         }
     }
 
@@ -106,7 +108,7 @@ impl Store {
             .execute(&self.connection)
             .await {
             Ok(_) => Ok(true),
-            Err(_) => Err(Error::DatabaseQueryError)
+            Err(e) => Err(Error::DatabaseQueryError(e)),
         }
     }
 
@@ -127,7 +129,43 @@ impl Store {
             .fetch_one(&self.connection)
             .await {
             Ok(question) => Ok(question),
-            Err(_) => Err(Error::DatabaseQueryError),
+            Err(e) => Err(Error::DatabaseQueryError(e))
+        }
+    }
+
+    pub async fn add_account(
+        self,
+        account: Account
+    ) -> Result<bool, Error> {
+        match sqlx::query("INSERT INTO account (email, password)
+        VALUES ($1, $2)")
+            .bind(account.email)
+            .bind(account.password)
+            .execute(&self.connection)
+            .await {
+            Ok(_) => Ok(true),
+            Err(error) => {
+                tracing::event!(
+                    tracing::Level::ERROR,
+                    code = error
+                        .as_database_error()
+                        .unwrap()
+                        .code()
+                        .unwrap()
+                        .parse::<i32>()
+                        .unwrap(),
+                    db_message = error
+                        .as_database_error()
+                        .unwrap()
+                        .message(),
+                    constraint = error
+                        .as_database_error()
+                        .unwrap()
+                        .constraint()
+                        .unwrap()
+                );
+                Err(Error::DatabaseQueryError(error))
+            }
         }
     }
 }
