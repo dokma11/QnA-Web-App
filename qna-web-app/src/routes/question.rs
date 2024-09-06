@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use handle_errors::Error;
 use warp::{http::StatusCode};
 use tracing::{instrument, info, event, Level};
 use crate::store::Store;
@@ -25,10 +24,8 @@ pub async fn get_questions(
             .get_questions(converted_pagination_limit, pagination.offset as i32)
             .await {
             Ok(res) => res,
-            Err(_) => {
-                return Err(warp::reject::custom(
-                    Error::DatabaseQueryError
-                ))
+            Err(e) => {
+                return Err(warp::reject::custom(e));
             },
         };
 
@@ -70,8 +67,8 @@ pub async fn delete_question(
     id: i32,
     store: Store,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    if let Err(_) = store.delete_question(id).await {
-        return Err(warp::reject::custom(Error::DatabaseQueryError));
+    if let Err(e) = store.delete_question(id).await {
+        return Err(warp::reject::custom(e));
     }
 
     Ok(warp::reply::with_status("Question deleted", StatusCode::OK))
