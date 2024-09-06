@@ -14,7 +14,9 @@ pub enum Error {
     ReqwestAPIError(reqwest::Error),
     ClientError(APILayerError),
     ServerError(APILayerError),
-    MiddlewareReqwestAPIError(reqwest_middleware::Error)
+    MiddlewareReqwestAPIError(reqwest_middleware::Error),
+    WrongPassword,
+    ArgonLibraryError(argon2::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -40,6 +42,8 @@ impl std::fmt::Display for Error {
             Error::ClientError(err) => write!(f, "External client error: {}", err),
             Error::ServerError(err) => write!(f, "External server error: {}", err),
             Error::MiddlewareReqwestAPIError(err) => write!(f, "External API error: {}", err),
+            Error::WrongPassword => write!(f, "Wrong password"),
+            Error::ArgonLibraryError(err) => write!(f, "Argon library error: {}", err),
         }
     }
 }
@@ -96,6 +100,16 @@ pub async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
         Ok(warp::reply::with_status(
             "Internal server error".to_string(),
             StatusCode::INTERNAL_SERVER_ERROR,
+        ))
+    } else if let Some(Error::WrongPassword) = r.find() {
+        Ok(warp::reply::with_status(
+            "Wrong E-mail/Password combination".to_string(),
+            StatusCode::UNAUTHORIZED,
+        ))
+    } else if let Some(Error::ArgonLibraryError(_)) = r.find() {
+        Ok(warp::reply::with_status(
+            "Wrong E-mail/Password combination".to_string(),
+            StatusCode::UNAUTHORIZED,
         ))
     } else {
         Ok(warp::reply::with_status(
